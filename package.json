@@ -1,0 +1,17 @@
+{
+  "name": "telegram-mines-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot for mines prediction",
+  "main": "functions/bot/bot.js",
+  "scripts": {
+    "build": "netlify-lambda build functions",
+    "start": "netlify-lambda serve functions"
+  },
+  "dependencies": {
+    "telegraf": "^4.12.2",
+    "netlify-lambda": "^2.0.15"
+  },
+  "devDependencies": {
+    "encoding": "^0.1.13"
+  }
+}
