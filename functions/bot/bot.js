@@ -8,7 +8,7 @@ const userState = {};
 
 // Image range and sent images tracker
 const startIndex = 17;
-const endIndex = 24;
+const endIndex = 55;
 let sentImages = [];
 
 // Function to get the next image
