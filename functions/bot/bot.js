@@ -30,10 +30,10 @@ const getNextImage = () => {
 
 // Start command
 bot.start((ctx) => {
-  return ctx.reply("Register at the house where the bot is operating 👇🏻", {
+  return ctx.reply("Register here to access to powerfull Stake Mines Bot👇🏻", {
     reply_markup: {
       inline_keyboard: [
-        [{ text: "Click to register", url: "https://your-registration-link.com" }],
+        [{ text: "Click to register", url: "stake.bet/?c=stakeminertg" }],
         [{ text: "START STAKE MINES 3.0 Bot 💣", callback_data: "start_stake_mines" }],
       ],
     },
@@ -62,8 +62,8 @@ bot.action(/^mines_\d$/, async (ctx) => {
   const mines = ctx.match[0].split("_")[1];
   userState[ctx.chat.id] = { mines };
 
-  await ctx.replyWithPhoto("https://t.me/minesassetscs/2", { caption: "Follow the instructions!" });
-  return ctx.reply(`Enter Server Seed From Stake 🔻🤖:`, { parse_mode: "HTML" });
+  await ctx.replyWithPhoto("https://t.me/minesassetscs/2", { caption: "Follow the instructions and copy code from stake 💰" });
+  return ctx.reply(`Enter Server Seed From Stake 🤖 ⬇️:`, { parse_mode: "HTML" });
 });
 
 // Handle server seed input
@@ -95,7 +95,7 @@ bot.on("text", async (ctx) => {
     userState[userId].isChangingSeed = false;
 
     await ctx.reply("Seed Input Successful ✅");
-    await ctx.reply("Calculating Result........");
+    await ctx.reply("Calculating Result...");
 
     const photoUrl = getNextImage();
     return ctx.replyWithPhoto(photoUrl, {
@@ -126,7 +126,7 @@ bot.action("generate_new_prediction", async (ctx) => {
 // Handle continuing with the current seed
 bot.action("continue_with_seed", async (ctx) => {
   await ctx.answerCbQuery();
-  await ctx.reply("Calculating Result........");
+  await ctx.reply("Calculating Result...");
 
   const photoUrl = getNextImage();
   return ctx.replyWithPhoto(photoUrl, {
@@ -150,7 +150,7 @@ bot.action("change_server_seed", async (ctx) => {
   }
 
   await ctx.replyWithPhoto("https://t.me/minesassetscs/2", { caption: "Follow the instructions!" });
-  return ctx.reply("Enter new Server Seed From Stake 🔻🤖:");
+  return ctx.reply("Enter new Server Seed From Stake 🤖 ⬇️:");
 });
 
 // Handle changing mines
