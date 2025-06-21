@@ -1,175 +1,31 @@
 const { Telegraf } = require("telegraf");
 
-// Initialize bot with token from environment variable
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-// State tracking (Note: This will reset between function calls)
-const userState = {};
-
-// Image range and sent images tracker
-const startIndex = 17;
-const endIndex = 55;
-let sentImages = [];
-
-// Function to get the next image
-const getNextImage = () => {
-  const allImages = Array.from({ length: endIndex - startIndex + 1 }, (_, i) => startIndex + i);
-  const remainingImages = allImages.filter((image) => !sentImages.includes(image));
-
-  if (remainingImages.length === 0) {
-    sentImages = [];
-    return getNextImage();
-  }
-
-  const randomIndex = Math.floor(Math.random() * remainingImages.length);
-  const selectedImage = remainingImages[randomIndex];
-  sentImages.push(selectedImage);
-
-  return `https://t.me/minespredictorcs/${selectedImage}`;
-};
-
-// Start command
+// /start command with ONLY your message
 bot.start((ctx) => {
-  return ctx.reply("Register here to access to powerfull Stake Mines Bot👇🏻", {
+  const message = `
+👋🤖 Hi, are you ready to get a unique trading robot based on OpenAI in conjunction with 30 indicators?
+
+🏆 I want to tell you right away that this is not gold bars that will come to your hands by themselves.
+
+This is a shovel that you can use to dig out your gold!
+
+✔️ Trading is a path you have to take yourself! And this bot will help you to do it! I spent a lot of money and time to make this bot free for everyone. You need to follow some simple steps to get started, it will take you 10 minutes.
+
+Click the "Get access to bot" button and you'll get instructions to get started!
+  `;
+
+  return ctx.reply(message.trim(), {
     reply_markup: {
       inline_keyboard: [
-        [{ text: "Click to register", url: "stake.bet/?c=stakeminertg" }],
-        [{ text: "START STAKE MINES 3.0 Bot 💣", callback_data: "start_stake_mines" }],
+        [{ text: "Get access to bot 🤖", url: "https://stake.bet/?c=stakeminertg" }],
       ],
     },
   });
 });
 
-// Handle "START STAKE MINES 3.0 Bot 💣"
-bot.action("start_stake_mines", async (ctx) => {
-  await ctx.answerCbQuery();
-  return ctx.reply("Choose the number of mines you want ⬇️", {
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: "1", callback_data: "mines_1" }],
-        [{ text: "2", callback_data: "mines_2" }],
-        [{ text: "3", callback_data: "mines_3" }],
-        [{ text: "4", callback_data: "mines_4" }],
-        [{ text: "5", callback_data: "mines_5" }],
-      ],
-    },
-  });
-});
-
-// Handle mines selection
-bot.action(/^mines_\d$/, async (ctx) => {
-  await ctx.answerCbQuery();
-  const mines = ctx.match[0].split("_")[1];
-  userState[ctx.chat.id] = { mines };
-
-  await ctx.replyWithPhoto("https://t.me/minesassetscs/2", { caption: "Follow the instructions and copy code from stake 💰" });
-  return ctx.reply(`Enter Server Seed From Stake 🤖 ⬇️:`, { parse_mode: "HTML" });
-});
-
-// Handle server seed input
-bot.on("text", async (ctx) => {
-  const userId = ctx.chat.id;
-
-  // If user is providing the initial server seed
-  if (userState[userId] && !userState[userId].serverSeed) {
-    userState[userId].serverSeed = ctx.message.text;
-
-    await ctx.reply("Seed Input Successful ✅");
-    await ctx.reply("Calculating Result........");
-
-    const photoUrl = getNextImage();
-    return ctx.replyWithPhoto(photoUrl, {
-      caption: "Prediction with 98% accuracy ✅💎!",
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "Generate New Prediction 🚀", callback_data: "generate_new_prediction" }],
-          [{ text: "Want to change mines 💣 ?", callback_data: "change_mines" }],
-        ],
-      },
-    });
-  }
-
-  // If user is changing the server seed
-  if (userState[userId] && userState[userId].isChangingSeed) {
-    userState[userId].serverSeed = ctx.message.text;
-    userState[userId].isChangingSeed = false;
-
-    await ctx.reply("Seed Input Successful ✅");
-    await ctx.reply("Calculating Result...");
-
-    const photoUrl = getNextImage();
-    return ctx.replyWithPhoto(photoUrl, {
-      caption: "Prediction with 98% accuracy ✅💎!",
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "Generate New Prediction 🚀", callback_data: "generate_new_prediction" }],
-          [{ text: "Want to change mines 💣 ?", callback_data: "change_mines" }],
-        ],
-      },
-    });
-  }
-});
-
-// Handle Generate New Prediction
-bot.action("generate_new_prediction", async (ctx) => {
-  await ctx.answerCbQuery();
-  return ctx.reply("Do you want to change the server seed?", {
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: "Continue with this seed ▶️", callback_data: "continue_with_seed" }],
-        [{ text: "Change server seed 🔁", callback_data: "change_server_seed" }],
-      ],
-    },
-  });
-});
-
-// Handle continuing with the current seed
-bot.action("continue_with_seed", async (ctx) => {
-  await ctx.answerCbQuery();
-  await ctx.reply("Calculating Result...");
-
-  const photoUrl = getNextImage();
-  return ctx.replyWithPhoto(photoUrl, {
-    caption: "Prediction with 98% accuracy ✅💎!",
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: "Generate New Prediction 🚀", callback_data: "generate_new_prediction" }],
-        [{ text: "Want to change mines 💣 ?", callback_data: "change_mines" }],
-      ],
-    },
-  });
-});
-
-// Handle changing the server seed
-bot.action("change_server_seed", async (ctx) => {
-  await ctx.answerCbQuery();
-  const userId = ctx.chat.id;
-
-  if (userState[userId]) {
-    userState[userId].isChangingSeed = true;
-  }
-
-  await ctx.replyWithPhoto("https://t.me/minesassetscs/2", { caption: "Follow the instructions!" });
-  return ctx.reply("Enter new Server Seed From Stake 🤖 ⬇️:");
-});
-
-// Handle changing mines
-bot.action("change_mines", async (ctx) => {
-  await ctx.answerCbQuery();
-  return ctx.reply("Choose the number of mines you want ⬇️", {
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: "1", callback_data: "mines_1" }],
-        [{ text: "2", callback_data: "mines_2" }],
-        [{ text: "3", callback_data: "mines_3" }],
-        [{ text: "4", callback_data: "mines_4" }],
-        [{ text: "5", callback_data: "mines_5" }],
-      ],
-    },
-  });
-});
-
-// Webhook handler for Netlify
+// Netlify webhook handler
 exports.handler = async (event) => {
   try {
     if (event.httpMethod !== "POST") {
