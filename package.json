@@ -4,6 +4,7 @@
   "description": "Telegram bot for mines prediction",
   "main": "functions/bot/bot.js",
   "scripts": {
+    "build": "echo 'No build needed'",
     "start": "netlify-lambda serve functions"
   },
   "dependencies": {
