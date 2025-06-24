@@ -1,12 +1,12 @@
-const { Telegraf } = require("telegraf"); const fs = require("fs"); const path = require("path");
+const { Telegraf } = require("telegraf");
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
+const userState = {};
 
-const userState = {}; const verifiedIdsPath = path.join(__dirname, "verified-ids.json");
-
-const loadVerifiedIds = () => { try { const data = fs.readFileSync(verifiedIdsPath); return JSON.parse(data); } catch { return []; } };
-
-bot.start((ctx) => { return ctx.reply( `👋🤖 Hi, are you ready to get a unique trading robot based on OpenAI in conjunction with 30 indicators?
+// /start
+bot.start((ctx) => {
+  return ctx.reply(
+    `👋🤖 Hi, are you ready to get a unique trading robot based on OpenAI in conjunction with 30 indicators?
 
 🏆 I want to tell you right away that this is not gold bars that will come to your hands by themselves.
 
@@ -14,73 +14,143 @@ This is a shovel that you can use to dig out your gold!
 
 ✔️ Trading is a path you have to take yourself! And this bot will help you to do it! I spent a lot of money and time to make this bot free for everyone. You need to follow some simple steps to get started, it will take you 10 minutes.
 
-Click the "Get access to bot" button and you'll get instructions to get started!`, { reply_markup: { inline_keyboard: [[{ text: "📱Main Menu📱", callback_data: "main_menu" }]], }, } ); });
+Click the "Get access to bot" button and you'll get instructions to get started!`,
+    {
+      reply_markup: {
+        inline_keyboard: [[{ text: "📱Main Menu📱", callback_data: "main_menu" }]],
+      },
+    }
+  );
+});
 
-bot.action("main_menu", async (ctx) => { await ctx.answerCbQuery(); return ctx.reply( `<b>Main menu of Trade Mind Ai📈</b>
+// Main menu
+bot.action("main_menu", async (ctx) => {
+  await ctx.answerCbQuery();
+  return ctx.reply(
+    `<b>Main menu of Trade Mind Ai📈</b>
 
 <code>Here you can get test signals, familiarize yourself with the bot interface and learn how it works.
 
-Read the reviews, browse the information channel, ask your manager a question, and don't forget to subscribe to our YouTube channel with weekly bot reviews. And of course, here you can get full access to the bot forever absolutely free.</code>`, { parse_mode: "HTML", reply_markup: { inline_keyboard: [ [{ text: "❓How it work's", callback_data: "how_it_works" }], [{ text: "🔐 Full Access", callback_data: "full_access" }], [{ text: "📈 Trade", callback_data: "trade" }], [{ text: "☎️ Support", url: "https://t.me/BinaryMindsetTg" }], ], }, } ); });
+Read the reviews, browse the information channel, ask your manager a question, and don't forget to subscribe to our YouTube channel with weekly bot reviews. And of course, here you can get full access to the bot forever absolutely free.</code>`,
+    {
+      parse_mode: "HTML",
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "❓How it work's", callback_data: "how_it_works" }],
+          [{ text: "🔐 Full Access", callback_data: "full_access" }],
+          [{ text: "📈 Trade", callback_data: "trade" }],
+          [{ text: "☎️ Support", url: "https://t.me/BinaryMindsetTg" }],
+        ],
+      },
+    }
+  );
+});
 
-bot.action("how_it_works", async (ctx) => { await ctx.answerCbQuery(); return ctx.reply( `<b>Trade Mind Ai: innovative neural network-based product</b>
+// How it works
+bot.action("how_it_works", async (ctx) => {
+  await ctx.answerCbQuery();
+  return ctx.reply(
+    `<b>Trade Mind Ai: innovative neural network-based product</b>
 
 <code>The bot performs technical and volume market analysis, considering numerous factors to provide accurate signals for binary options trading📊
 
 Key features:
 
 Technical analysis🛠 Identifies optimal points to buy options.
+Volume analysis🌐 Assesses market strength.
+Candlesticks📊 Reads price behavior.
+Global factors🌎 Economic & political impact.
+Self-learning🧩 Learns from past mistakes.
+Advanced AI🤖 Cutting-edge prediction tool.
 
-Volume analysis🌐 Assesses market strength based on trading volume, predicting reversals or trends.
+Use it today for stable profits!</code>`,
+    { parse_mode: "HTML" }
+  );
+});
 
-Japanese candlesticks📊 Determines opening, max, and min stock prices.
+// Trade
+bot.action("trade", async (ctx) => {
+  await ctx.answerCbQuery();
+  return ctx.reply("Access Denied, please complete the registration.❌");
+});
 
-Global factors🌎 Monitors economic and political events impacting the market.
+// Full Access
+bot.action("full_access", async (ctx) => {
+  await ctx.answerCbQuery();
+  return ctx.reply(
+    `To activate full access to the bot, you will need to register a new account with Quotex broker by following this link🫵
 
-Self-learning🧙 Learns from past mistakes to improve accuracy.
+🫵 <b>Attention</b> - You must register using the link above or the Register button. Otherwise the bot will not be able to confirm registration and you will not get access to it.
 
-Advanced AI🤖 Built on cutting-edge AI technology, enabling constant evolution in trading.
+We cooperate with <a href="https://broker-qx.pro/sign-up/?lid=1349529">Quotex</a> via affiliate program, so you get it free forever.
 
-Our tool enhances trading efficiency, giving you a competitive edge and increasing income on Pocket Option and other platforms. Use it today for stable profits.</code>`, { parse_mode: "HTML", } ); });
+<b>Important*</b> We earn a % of deposits only. So we want you to succeed too!`,
+    {
+      parse_mode: "HTML",
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: "✍🏻 Registration",
+              url: "https://broker-qx.pro/sign-up/?lid=1349529",
+            },
+          ],
+          [{ text: "🔍 Enter Id", callback_data: "enter_id" }],
+          [{ text: "⬅️ Back", callback_data: "main_menu" }],
+        ],
+      },
+    }
+  );
+});
 
-bot.action("trade", async (ctx) => { await ctx.answerCbQuery(); return ctx.reply("Access Denied, please complete the registration.❌"); });
+// Enter ID
+bot.action("enter_id", async (ctx) => {
+  await ctx.answerCbQuery();
+  userState[ctx.chat.id] = { enteringId: true };
+  return ctx.reply("❗After completing the registration process, enter your ID:", {
+    reply_markup: {
+      inline_keyboard: [[{ text: "↩️ Back", callback_data: "full_access" }]],
+    },
+  });
+});
 
-bot.action("full_access", async (ctx) => { await ctx.answerCbQuery(); return ctx.reply( `To activate full access to the bot, you will need to register a new account with Quotex broker by following this link🫵
+// On text (ID)
+bot.on("text", async (ctx) => {
+  const userId = ctx.chat.id;
+  const message = ctx.message.text.trim();
 
-🫵 Attention 🫵 - You must register using the link above or the <b><a href="https://broker-qx.pro/sign-up/?lid=1349529">Register</a></b> button. Otherwise the bot will not be able to confirm registration and you will not get access to it.
+  if (userState[userId]?.enteringId) {
+    userState[userId].enteringId = false;
+    await ctx.reply(`✅ Your ID ${message} has been received and is under review.`);
+    await ctx.reply("⌛ Checking your ID for registration, please expect ~1-2 minutes...");
 
-We do not hide that we use an affiliate program, on the contrary, we openly declare it. We cooperate with <a href="https://broker-qx.pro/sign-up/?lid=1349529">Quotex</a> on the basis of an affiliate program, which allows us to maintain and develop our product, and you - to use it for free, without the need to make an expensive subscription.
-
-<b>Important*</b> We do not profit from your losses, only % of the total amount of deposits, which means that we are not interested in you losing, on the contrary, your success contributes to the development of ours.Through the affiliate program we help each other`, { parse_mode: "HTML", reply_markup: { inline_keyboard: [ [ { text: "✍️ Registration", url: "https://broker-qx.pro/sign-up/?lid=1349529", }, ], [{ text: "🔍 Enter Id", callback_data: "enter_id" }], [{ text: "Back", callback_data: "main_menu" }], ], }, } ); });
-
-bot.action("enter_id", async (ctx) => { await ctx.answerCbQuery(); userState[ctx.chat.id] = { enteringId: true }; await ctx.reply("❗After completing the registration process, enter your ID:", { reply_markup: { inline_keyboard: [[{ text: "↩️ Back", callback_data: "full_access" }]], }, }); });
-
-bot.on("text", async (ctx) => { const userId = ctx.chat.id; const message = ctx.message.text.trim();
-
-if (userState[userId]?.enteringId) { userState[userId].enteringId = false;
-
-await ctx.reply(`✅ Your ID ${message} has been received and is under review.`);
-await ctx.reply("⌛ Checking your ID for registration, please expect ~1-2 minutes...");
-
-setTimeout(() => {
-  const verifiedIds = loadVerifiedIds();
-  if (verifiedIds.includes(message)) {
-    ctx.reply("🎉 Your ID has been successfully verified! You now have full access to Trade Mind AI. Enjoy safe and smart trading with our AI-powered assistant ✅📊");
-  } else {
-    ctx.reply("❌ ID not found or not yet verified. Please ensure you've registered and deposited using the correct link.");
+    setTimeout(() => {
+      ctx.reply(
+        "🎉 Your ID has been successfully verified and full access is now granted! Welcome to Trade Mind AI 🚀✅"
+      );
+    }, 30000); // 30 seconds
   }
-}, 30000);
+});
 
-} });
+// Webhook handler for Netlify
+exports.handler = async (event) => {
+  try {
+    if (event.httpMethod !== "POST") {
+      return { statusCode: 405, body: "Method Not Allowed" };
+    }
 
-exports.handler = async (event) => { try { if (event.httpMethod !== "POST") { return { statusCode: 405, body: "Method Not Allowed" }; }
+    const update = JSON.parse(event.body);
+    await bot.handleUpdate(update);
 
-const update = JSON.parse(event.body);
-await bot.handleUpdate(update);
-
-return {
-  statusCode: 200,
-  body: JSON.stringify({ message: "Success" }),
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ message: "Success" }),
+    };
+  } catch (error) {
+    console.error("Error handling update:", error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: "Internal Server Error" }),
+    };
+  }
 };
-
-} catch (error) { console.error("Error handling update:", error); return { statusCode: 500, body: JSON.stringify({ error: "Internal Server Error" }), }; } };
-
