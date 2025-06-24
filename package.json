@@ -4,19 +4,9 @@
   "description": "Telegram bot for mines prediction",
   "main": "functions/bot/bot.js",
   "scripts": {
-    "build": "webpack",
     "start": "netlify-lambda serve functions"
   },
   "dependencies": {
     "telegraf": "^4.12.2"
-  },
-  "devDependencies": {
-    "@babel/core": "^7.22.5",
-    "@babel/preset-env": "^7.22.5",
-    "babel-loader": "^9.1.2",
-    "encoding": "^0.1.13",
-    "netlify-lambda": "^2.0.15",
-    "webpack": "^5.85.0",
-    "webpack-cli": "^5.1.1"
   }
 }
