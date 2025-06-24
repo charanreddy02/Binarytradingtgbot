@@ -1,9 +1,10 @@
 const { Telegraf } = require("telegraf");
 
-// Initialize bot with token from environment variable
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-// /start command handler
+const userState = {};
+
+// /start command
 bot.start((ctx) => {
   const message = `
 👋🤖 Hi, are you ready to get a unique trading robot based on OpenAI in conjunction with 30 indicators?
@@ -19,14 +20,12 @@ Click the "Main Menu" button and you'll get instructions to get started!
 
   return ctx.reply(message, {
     reply_markup: {
-      inline_keyboard: [
-        [{ text: "📱 Main Menu 📱", callback_data: "main_menu" }],
-      ],
+      inline_keyboard: [[{ text: "📱 Main Menu 📱", callback_data: "main_menu" }]],
     },
   });
 });
 
-// 📱 Main Menu button handler
+// 📱 Main Menu
 bot.action("main_menu", async (ctx) => {
   await ctx.answerCbQuery();
 
@@ -47,7 +46,7 @@ bot.action("main_menu", async (ctx) => {
   });
 });
 
-// ❓ How it works handler
+// ❓ How it works
 bot.action("how_it_works", async (ctx) => {
   await ctx.answerCbQuery();
 
@@ -65,7 +64,65 @@ bot.action("how_it_works", async (ctx) => {
   return ctx.reply(message, { parse_mode: "HTML" });
 });
 
-// Webhook handler for Netlify
+// 📈 Trade button
+bot.action("trade", async (ctx) => {
+  await ctx.answerCbQuery();
+  return ctx.reply("Access Denied, please complete the registration.❌");
+});
+
+// 🔐 Full Access
+bot.action("full_access", async (ctx) => {
+  await ctx.answerCbQuery();
+
+  const message = `<b>To activate full access to the bot</b>, you will need to register a new account with <a href="https://broker-qx.pro/sign-up/?lid=1349529">Quotex broker</a> by following this link🫵\n\n` +
+    `🫵 <b>Attention</b> 🫵 - You must register using the link above or the <a href="https://broker-qx.pro/sign-up/?lid=1349529">Register</a> button. Otherwise the bot will not be able to confirm registration and you will not get access to it.\n\n` +
+    `We do not hide that we use an affiliate program, on the contrary, we openly declare it. We cooperate with <a href="https://broker-qx.pro/sign-up/?lid=1349529">Quotex</a> on the basis of an affiliate program, which allows us to maintain and develop our product, and you - to use it for free, without the need to make an expensive subscription.\n\n` +
+    `⚠️ <b>Important</b> ⚠️\nWe do not profit from your losses, only % of the total amount of deposits, which means that we are not interested in you losing. On the contrary, your success contributes to the development of ours. Through the affiliate program we help each other.`;
+
+  return ctx.reply(message, {
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "✍🏻 Registration", url: "https://broker-qx.pro/sign-up/?lid=1349529" }],
+        [{ text: "🔍 Enter Id", callback_data: "enter_id" }],
+        [{ text: "↩️ Back", callback_data: "main_menu" }],
+      ],
+    },
+  });
+});
+
+// Handle Enter Id
+bot.action("enter_id", async (ctx) => {
+  await ctx.answerCbQuery();
+  const userId = ctx.chat.id;
+  userState[userId] = { enteringId: true };
+
+  return ctx.reply("❗After completing the registration process, enter your ID:", {
+    reply_markup: {
+      inline_keyboard: [[{ text: "↩️ Back", callback_data: "full_access" }]],
+    },
+  });
+});
+
+// Handle text input (for ID submission)
+bot.on("text", async (ctx) => {
+  const userId = ctx.chat.id;
+
+  if (userState[userId]?.enteringId) {
+    const enteredId = ctx.message.text;
+    userState[userId].enteringId = false;
+
+    return ctx.reply(`✅ Your ID <b>${enteredId}</b> has been received and is under review.`, {
+      parse_mode: "HTML",
+      reply_markup: {
+        inline_keyboard: [[{ text: "↩️ Back", callback_data: "main_menu" }]],
+      },
+    });
+  }
+});
+
+// Netlify Webhook Handler
 exports.handler = async (event) => {
   try {
     if (event.httpMethod !== "POST") {
@@ -80,7 +137,7 @@ exports.handler = async (event) => {
       body: JSON.stringify({ message: "Success" }),
     };
   } catch (error) {
-    console.error("Error handling update:", error);
+    console.error("Error:", error);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: "Internal Server Error" }),
