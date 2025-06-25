@@ -10,93 +10,80 @@ const currencyPairs = [
 
 const timeframes = ["10S", "30S", "1min", "3min", "5min"];
 
-const userSession = {};
+const userState = {};
 
+// Helper to group buttons side-by-side
+const chunk = (arr, size) => {
+  const chunks = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
+};
+
+// Start command - show pair selection
 bot.start((ctx) => {
-  userSession[ctx.chat.id] = {};
-  return ctx.reply(
-    '👋 Welcome to the Binary Signal AI Bot!\n\nPlease select a currency pair:',
-    Markup.inlineKeyboard(
-      currencyPairs.map((pair) => [Markup.button.callback(pair, `PAIR_${pair}`)])
-    )
-  );
+  userState[ctx.chat.id] = {};
+  ctx.reply("👋 Welcome! Please select a currency pair:", Markup.keyboard(
+    [...chunk(currencyPairs, 2), ["🔙 Back"]]
+  ).resize());
 });
 
-bot.action(/^PAIR_.+/, async (ctx) => {
-  const pair = ctx.match[0].replace('PAIR_', '');
-  userSession[ctx.chat.id].pair = pair;
+// Handle currency pair selection
+bot.hears(currencyPairs, (ctx) => {
+  const pair = ctx.message.text;
+  userState[ctx.chat.id].pair = pair;
 
-  await ctx.answerCbQuery();
-  await ctx.editMessageText(
-    `📊 Selected Pair: ${pair}\n\nSelect a timeframe:`,
-    Markup.inlineKeyboard(
-      timeframes.map((t) => [Markup.button.callback(t, `TIME_${t}`)]).concat([
-        [Markup.button.callback("🔙 Back", "BACK_TO_PAIRS")]
-      ])
-    )
-  );
+  ctx.reply(`📊 Selected Pair: ${pair}\n\nNow select a timeframe:`, Markup.keyboard(
+    [...chunk(timeframes, 2), ["🔙 Back"]]
+  ).resize());
 });
 
-bot.action(/^TIME_.+/, async (ctx) => {
-  const time = ctx.match[0].replace('TIME_', '');
-  const chatId = ctx.chat.id;
-  userSession[chatId].time = time;
+// Handle timeframe selection
+bot.hears(timeframes, (ctx) => {
+  const time = ctx.message.text;
+  userState[ctx.chat.id].time = time;
 
-  await ctx.answerCbQuery();
-
-  const prediction = Math.random() > 0.5 ? "⬆️" : "⬇️";
-  await ctx.reply(prediction); // Big emoji style
-
-  return ctx.reply(
-    "Get the next signal or go back:",
-    Markup.inlineKeyboard([
-      [Markup.button.callback("📈 Next Signal", "NEXT_SIGNAL")],
-      [Markup.button.callback("🔙 Back", "BACK_TO_TIME")]
-    ])
-  );
+  const prediction = Math.random() > 0.5 ? '⬆️' : '⬇️';
+  ctx.reply(`📈 Signal for ${userState[ctx.chat.id].pair} @ ${time}:`);
+  ctx.reply(prediction, Markup.keyboard([
+    ["📈 Next Signal", "🔙 Back"]
+  ]).resize());
 });
 
-bot.action("NEXT_SIGNAL", async (ctx) => {
-  await ctx.answerCbQuery();
-
-  const prediction = Math.random() > 0.5 ? "⬆️" : "⬇️";
-  await ctx.reply(prediction);
-
-  return ctx.reply(
-    "Get the next signal or go back:",
-    Markup.inlineKeyboard([
-      [Markup.button.callback("📈 Next Signal", "NEXT_SIGNAL")],
-      [Markup.button.callback("🔙 Back", "BACK_TO_TIME")]
-    ])
-  );
+// Handle next signal request
+bot.hears("📈 Next Signal", (ctx) => {
+  const prediction = Math.random() > 0.5 ? '⬆️' : '⬇️';
+  ctx.reply(prediction, Markup.keyboard([
+    ["📈 Next Signal", "🔙 Back"]
+  ]).resize());
 });
 
-bot.action("BACK_TO_TIME", async (ctx) => {
-  const chatId = ctx.chat.id;
-  const pair = userSession[chatId]?.pair || "Not selected";
+// Handle back navigation
+bot.hears("🔙 Back", (ctx) => {
+  const state = userState[ctx.chat.id];
 
-  await ctx.answerCbQuery();
-  await ctx.editMessageText(
-    `📊 Selected Pair: ${pair}\n\nSelect a timeframe:`,
-    Markup.inlineKeyboard(
-      timeframes.map((t) => [Markup.button.callback(t, `TIME_${t}`)]).concat([
-        [Markup.button.callback("🔙 Back", "BACK_TO_PAIRS")]
-      ])
-    )
-  );
+  if (!state.pair) {
+    // Already at main
+    ctx.reply("👋 Welcome! Please select a currency pair:", Markup.keyboard(
+      [...chunk(currencyPairs, 2), ["🔙 Back"]]
+    ).resize());
+  } else if (state.pair && !state.time) {
+    // Go back to pair selection
+    state.pair = null;
+    ctx.reply("👋 Welcome! Please select a currency pair:", Markup.keyboard(
+      [...chunk(currencyPairs, 2), ["🔙 Back"]]
+    ).resize());
+  } else if (state.pair && state.time) {
+    // Go back to timeframe selection
+    state.time = null;
+    ctx.reply(`📊 Selected Pair: ${state.pair}\n\nNow select a timeframe:`, Markup.keyboard(
+      [...chunk(timeframes, 2), ["🔙 Back"]]
+    ).resize());
+  }
 });
 
-bot.action("BACK_TO_PAIRS", async (ctx) => {
-  await ctx.answerCbQuery();
-  await ctx.editMessageText(
-    '👋 Welcome to the Binary Signal AI Bot!\n\nPlease select a currency pair:',
-    Markup.inlineKeyboard(
-      currencyPairs.map((pair) => [Markup.button.callback(pair, `PAIR_${pair}`)])
-    )
-  );
-});
-
-// Netlify webhook export
+// Webhook handler for Netlify
 exports.handler = async (event) => {
   try {
     if (event.httpMethod !== "POST") {
@@ -108,13 +95,13 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ message: "Success" }),
+      body: "Success",
     };
-  } catch (error) {
-    console.error("Error handling update:", error);
+  } catch (err) {
+    console.error("Error in Telegram handler:", err);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "Internal Server Error" }),
+      body: "Internal Server Error",
     };
   }
 };
