@@ -2,39 +2,119 @@ const { Telegraf, Markup } = require("telegraf");
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-const currencyPairs = [ "AUD/NZD", "EUR/SGD", "GBP/NZD", "NZD/CAD", "NZD/CHF", "NZD/USD", "USD/BDT", "USD/BRL", "USD/COP", "USD/DZD", "USD/EGP", "USD/INR", "USD/NGN", "USD/PKR", "USD/PHP", "USD/TRY", "UKBrent", "USCrude" ];
+const currencyPairs = [
+  "AUD/NZD", "EUR/SGD", "GBP/NZD", "NZD/CAD", "NZD/CHF", "NZD/USD",
+  "USD/BDT", "USD/BRL", "USD/COP", "USD/DZD", "USD/EGP", "USD/INR",
+  "USD/NGN", "USD/PKR", "USD/PHP", "USD/TRY", "UKBrent", "USCrude"
+];
 
-const timeframes = ["10S", "30S", "1min", "3min", "5min"]; const userState = {};
+const timeframes = ["10S", "30S", "1min", "3min", "5min"];
 
-bot.start((ctx) => { userState[ctx.chat.id] = {}; return ctx.reply("👋 Welcome to the Binary Signal AI Bot!\n\nPlease select a currency pair:", { reply_markup: { inline_keyboard: currencyPairs.map((pair) => [ { text: pair, callback_data: PAIR_${pair} } ]) } }); });
+const userSession = {};
 
-bot.action(/^PAIR_.+/, async (ctx) => { await ctx.answerCbQuery(); const pair = ctx.match[0].replace("PAIR_", ""); userState[ctx.chat.id].pair = pair;
+bot.start((ctx) => {
+  userSession[ctx.chat.id] = {};
+  return ctx.reply(
+    '👋 Welcome to the Binary Signal AI Bot!\n\nPlease select a currency pair:',
+    Markup.inlineKeyboard(
+      currencyPairs.map((pair) => [Markup.button.callback(pair, `PAIR_${pair}`)])
+    )
+  );
+});
 
-return ctx.editMessageText(📊 Selected Pair: ${pair}\n\nSelect a timeframe:, { reply_markup: { inline_keyboard: timeframes.map((t) => [ { text: t, callback_data: TIME_${t} } ]).concat([[ { text: "🔙 Back", callback_data: "BACK_TO_PAIRS" } ]]) } }); });
+bot.action(/^PAIR_.+/, async (ctx) => {
+  const pair = ctx.match[0].replace('PAIR_', '');
+  userSession[ctx.chat.id].pair = pair;
 
-bot.action(/^TIME_.+/, async (ctx) => { await ctx.answerCbQuery(); const time = ctx.match[0].replace("TIME_", ""); userState[ctx.chat.id].time = time;
+  await ctx.answerCbQuery();
+  await ctx.editMessageText(
+    `📊 Selected Pair: ${pair}\n\nSelect a timeframe:`,
+    Markup.inlineKeyboard(
+      timeframes.map((t) => [Markup.button.callback(t, `TIME_${t}`)]).concat([
+        [Markup.button.callback("🔙 Back", "BACK_TO_PAIRS")]
+      ])
+    )
+  );
+});
 
-const prediction = Math.random() > 0.5 ? "⬆️" : "⬇️"; await ctx.reply(prediction);
+bot.action(/^TIME_.+/, async (ctx) => {
+  const time = ctx.match[0].replace('TIME_', '');
+  const chatId = ctx.chat.id;
+  userSession[chatId].time = time;
 
-return ctx.reply("Get the next signal or go back:", { reply_markup: { inline_keyboard: [ [{ text: "📈 Next Signal", callback_data: "NEXT_SIGNAL" }], [{ text: "🔙 Back", callback_data: "BACK_TO_TIME" }] ] } }); });
+  await ctx.answerCbQuery();
 
-bot.action("NEXT_SIGNAL", async (ctx) => { await ctx.answerCbQuery(); const prediction = Math.random() > 0.5 ? "⬆️" : "⬇️"; await ctx.reply(prediction);
+  const prediction = Math.random() > 0.5 ? "⬆️" : "⬇️";
+  await ctx.reply(prediction); // Big emoji style
 
-return ctx.reply("Get the next signal or go back:", { reply_markup: { inline_keyboard: [ [{ text: "📈 Next Signal", callback_data: "NEXT_SIGNAL" }], [{ text: "🔙 Back", callback_data: "BACK_TO_TIME" }] ] } }); });
+  return ctx.reply(
+    "Get the next signal or go back:",
+    Markup.inlineKeyboard([
+      [Markup.button.callback("📈 Next Signal", "NEXT_SIGNAL")],
+      [Markup.button.callback("🔙 Back", "BACK_TO_TIME")]
+    ])
+  );
+});
 
-bot.action("BACK_TO_TIME", async (ctx) => { await ctx.answerCbQuery(); const pair = userState[ctx.chat.id].pair; return ctx.editMessageText(📊 Selected Pair: ${pair}\n\nSelect a timeframe:, { reply_markup: { inline_keyboard: timeframes.map((t) => [ { text: t, callback_data: TIME_${t} } ]).concat([[ { text: "🔙 Back", callback_data: "BACK_TO_PAIRS" } ]]) } }); });
+bot.action("NEXT_SIGNAL", async (ctx) => {
+  await ctx.answerCbQuery();
 
-bot.action("BACK_TO_PAIRS", async (ctx) => { await ctx.answerCbQuery(); return ctx.editMessageText("👋 Welcome to the Binary Signal AI Bot!\n\nPlease select a currency pair:", { reply_markup: { inline_keyboard: currencyPairs.map((pair) => [ { text: pair, callback_data: PAIR_${pair} } ]) } }); });
+  const prediction = Math.random() > 0.5 ? "⬆️" : "⬇️";
+  await ctx.reply(prediction);
 
-exports.handler = async (event) => { try { if (event.httpMethod !== "POST") { return { statusCode: 405, body: "Method Not Allowed" }; }
+  return ctx.reply(
+    "Get the next signal or go back:",
+    Markup.inlineKeyboard([
+      [Markup.button.callback("📈 Next Signal", "NEXT_SIGNAL")],
+      [Markup.button.callback("🔙 Back", "BACK_TO_TIME")]
+    ])
+  );
+});
 
-const update = JSON.parse(event.body);
-await bot.handleUpdate(update);
+bot.action("BACK_TO_TIME", async (ctx) => {
+  const chatId = ctx.chat.id;
+  const pair = userSession[chatId]?.pair || "Not selected";
 
-return {
-  statusCode: 200,
-  body: JSON.stringify({ message: "Success" })
+  await ctx.answerCbQuery();
+  await ctx.editMessageText(
+    `📊 Selected Pair: ${pair}\n\nSelect a timeframe:`,
+    Markup.inlineKeyboard(
+      timeframes.map((t) => [Markup.button.callback(t, `TIME_${t}`)]).concat([
+        [Markup.button.callback("🔙 Back", "BACK_TO_PAIRS")]
+      ])
+    )
+  );
+});
+
+bot.action("BACK_TO_PAIRS", async (ctx) => {
+  await ctx.answerCbQuery();
+  await ctx.editMessageText(
+    '👋 Welcome to the Binary Signal AI Bot!\n\nPlease select a currency pair:',
+    Markup.inlineKeyboard(
+      currencyPairs.map((pair) => [Markup.button.callback(pair, `PAIR_${pair}`)])
+    )
+  );
+});
+
+// Netlify webhook export
+exports.handler = async (event) => {
+  try {
+    if (event.httpMethod !== "POST") {
+      return { statusCode: 405, body: "Method Not Allowed" };
+    }
+
+    const update = JSON.parse(event.body);
+    await bot.handleUpdate(update);
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ message: "Success" }),
+    };
+  } catch (error) {
+    console.error("Error handling update:", error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: "Internal Server Error" }),
+    };
+  }
 };
-
-} catch (error) { console.error("Error handling update:", error); return { statusCode: 500, body: JSON.stringify({ error: "Internal Server Error" }) }; } };
-
