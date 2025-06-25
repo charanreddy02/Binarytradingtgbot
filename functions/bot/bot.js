@@ -53,7 +53,7 @@ bot.hears(currencyPairs, async (ctx) => {
   userSession[ctx.chat.id].pair = pair;
   return ctx.reply(
     `📊 Selected Pair: ${pair}\n\nSelect a timeframe:`,
-    { reply_markup: getReplyKeyboard(timeframes", 2, ["🔙 Back"]) }
+    { reply_markup: getReplyKeyboard(timeframes, 2, ["🔙 Back"]) }
   );
 });
 
