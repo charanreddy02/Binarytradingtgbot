@@ -1,140 +1,37 @@
-const { Telegraf, Markup } = require("telegraf");
+// telegram-bot.js 
+import { Telegraf, Markup } from 'telegraf';
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-const pairs = [
-  "AUD/NZD", "EUR/SGD", "GBP/NZD", "NZD/CAD", "NZD/CHF", "NZD/USD",
-  "USD/BDT", "USD/BRL", "USD/COP", "USD/DZD", "USD/EGP", "USD/INR",
-  "USD/NGN", "USD/PKR", "USD/PHP", "USD/TRY", "UKBrent", "USCrude"
-];
+const currencyPairs = [ "AUD/NZD", "EUR/SGD", "GBP/NZD", "NZD/CAD", "NZD/CHF", "NZD/USD", "USD/BDT", "USD/BRL", "USD/COP", "USD/DZD", "USD/EGP", "USD/INR", "USD/NGN", "USD/PKR", "USD/PHP", "USD/TRY", "UKBrent", "USCrude" ];
 
-const timeFrames = ["10 seconds", "30 seconds", "1 min", "3 min", "5 min"];
+const timeframes = ["10S", "30S", "1min", "3min", "5min"];
 
-const userState = {};
+const userSession = {}; // { chatId: { pair: '', time: '' } }
 
-bot.start((ctx) => {
-  userState[ctx.chat.id] = {};
-  ctx.reply(
-    "🤖 Welcome to Binary AI Signal Bot\n\nI use artificial intelligence to predict market moves.\n\nSelect a currency pair:",
-    Markup.inlineKeyboard(makeButtons(pairs, 'pair_', 2))
-  );
-});
+bot.start((ctx) => { userSession[ctx.chat.id] = {}; ctx.reply( '👋 Welcome to the Binary Signal AI Bot!\n\nPlease select a currency pair:', Markup.inlineKeyboard( currencyPairs.map((pair) => [Markup.button.callback(pair, PAIR_${pair})]) ) ); });
 
-bot.action(/pair_(.+)/, (ctx) => {
-  const pair = ctx.match[1];
-  userState[ctx.chat.id].pair = pair;
-  ctx.editMessageText(
-    `Selected pair: ${pair}\n\nNow select a time frame:`,
-    Markup.inlineKeyboard([
-      ...makeButtons(timeFrames, 'time_', 2),
-      [Markup.button.callback('🔙 Back', 'back_pairs')]
-    ])
-  );
-});
+bot.action(/PAIR_.+/, async (ctx) => { const pair = ctx.match[0].replace('PAIR_', ''); userSession[ctx.chat.id].pair = pair;
 
-bot.action(/time_(.+)/, async (ctx) => {
-  const time = ctx.match[1];
-  const pair = userState[ctx.chat.id]?.pair;
-  userState[ctx.chat.id].time = time;
+await ctx.editMessageText( 📊 Selected Pair: ${pair}\n\nSelect a timeframe:, Markup.inlineKeyboard( timeframes.map((t) => [Markup.button.callback(t, TIME_${t})]).concat([ [Markup.button.callback('🔙 Back', 'BACK_TO_PAIRS')] ]) ) ); });
 
-  const prediction = await generatePrediction(pair, time);
-  ctx.editMessageText(
-    `📈 Pair: ${pair}\n⏱ Timeframe: ${time}\n\n${prediction}`,
-    Markup.inlineKeyboard([
-      [Markup.button.callback('➡️ Next Signal', 'next_signal')],
-      [Markup.button.callback('🔙 Back', 'back_time')]
-    ])
-  );
-});
+bot.action(/TIME_.+/, async (ctx) => { const time = ctx.match[0].replace('TIME_', ''); userSession[ctx.chat.id].time = time;
 
-bot.action('next_signal', async (ctx) => {
-  const { pair, time } = userState[ctx.chat.id];
-  const prediction = await generatePrediction(pair, time);
-  ctx.editMessageText(
-    `📈 Pair: ${pair}\n⏱ Timeframe: ${time}\n\n${prediction}`,
-    Markup.inlineKeyboard([
-      [Markup.button.callback('➡️ Next Signal', 'next_signal')],
-      [Markup.button.callback('🔙 Back', 'back_time')]
-    ])
-  );
-});
+const pair = userSession[ctx.chat.id].pair;
 
-bot.action('back_time', (ctx) => {
-  ctx.editMessageText(
-    `Select a time frame:`,
-    Markup.inlineKeyboard([
-      ...makeButtons(timeFrames, 'time_', 2),
-      [Markup.button.callback('🔙 Back', 'back_pairs')]
-    ])
-  );
-});
+// Simulate logic for prediction (random here, but you can replace it) 
+const prediction = Math.random() > 0.5 ? '⬆️' : '⬇️';
 
-bot.action('back_pairs', (ctx) => {
-  ctx.editMessageText(
-    `Select a currency pair:`,
-    Markup.inlineKeyboard(makeButtons(pairs, 'pair_', 2))
-  );
-});
+await ctx.reply(prediction);
 
-function makeButtons(list, prefix, row = 2) {
-  const buttons = [];
-  for (let i = 0; i < list.length; i += row) {
-    buttons.push(
-      list.slice(i, i + row).map((item) =>
-        Markup.button.callback(item, `${prefix}${item}`)
-      )
-    );
-  }
-  return buttons;
-}
+await ctx.reply( 'Get the next signal or go back:', Markup.inlineKeyboard([ [Markup.button.callback('📈 Next Signal', 'NEXT_SIGNAL')], [Markup.button.callback('🔙 Back', 'BACK_TO_TIME')] ]) ); });
 
-async function generatePrediction(pair, timeframe) {
-  const history = await mockFetchHistoricalData(pair, timeframe);
+bot.action('NEXT_SIGNAL', async (ctx) => { const prediction = Math.random() > 0.5 ? '⬆️' : '⬇️'; await ctx.reply(prediction);
 
-  if (!history || history.length < 5) {
-    return `⚠️ Insufficient data to make a reliable prediction.`;
-  }
+await ctx.reply( 'Get the next signal or go back:', Markup.inlineKeyboard([ [Markup.button.callback('📈 Next Signal', 'NEXT_SIGNAL')], [Markup.button.callback('🔙 Back', 'BACK_TO_TIME')] ]) ); });
 
-  const trend = history[history.length - 1] - history[0];
-  const volatility = Math.max(...history) - Math.min(...history);
+bot.action('BACK_TO_TIME', async (ctx) => { const pair = userSession[ctx.chat.id].pair; await ctx.editMessageText( 📊 Selected Pair: ${pair}\n\nSelect a timeframe:, Markup.inlineKeyboard( timeframes.map((t) => [Markup.button.callback(t, TIME_${t})]).concat([ [Markup.button.callback('🔙 Back', 'BACK_TO_PAIRS')] ]) ) ); });
 
-  let reasoning = `Analyzed last ${history.length} points. Volatility: ${volatility.toFixed(4)}.`;
-  let prediction = '';
+bot.action('BACK_TO_PAIRS', async (ctx) => { await ctx.editMessageText( '👋 Welcome to the Binary Signal AI Bot!\n\nPlease select a currency pair:', Markup.inlineKeyboard( currencyPairs.map((pair) => [Markup.button.callback(pair, PAIR_${pair})]) ) ); });
 
-  if (Math.abs(trend) < 0.001) {
-    prediction = `⚠️ Market is sideways. Prediction: uncertain.`;
-  } else if (trend > 0) {
-    prediction = `⬆️ Prediction: UP\nReasoning: Upward trend.`;
-  } else {
-    prediction = `⬇️ Prediction: DOWN\nReasoning: Downward trend.`;
-  }
-
-  return `${reasoning}\n\n${prediction}`;
-}
-
-async function mockFetchHistoricalData(pair, timeframe) {
-  const data = [];
-  let price = 1 + Math.random();
-  for (let i = 0; i < 10; i++) {
-    price += (Math.random() - 0.5) * 0.01;
-    data.push(Number(price.toFixed(5)));
-  }
-  return data;
-}
-
-// ✅ Required Netlify Lambda handler
-exports.handler = async function (event, context) {
-  if (event.httpMethod === 'POST') {
-    const body = JSON.parse(event.body);
-    await bot.handleUpdate(body);
-    return {
-      statusCode: 200,
-      body: 'ok'
-    };
-  }
-
-  return {
-    statusCode: 200,
-    body: 'Bot is running.'
-  };
-};
+export default bot.handler();
