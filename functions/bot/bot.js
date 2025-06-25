@@ -47,21 +47,20 @@ bot.start((ctx) => {
 
 bot.hears(currencyPairs, async (ctx) => {
   const pair = ctx.message.text;
-  // Initialize userSession[ctx.chat.id] if it doesn't exist
   if (!userSession[ctx.chat.id]) {
     userSession[ctx.chat.id] = {};
   }
   userSession[ctx.chat.id].pair = pair;
   return ctx.reply(
     `📊 Selected Pair: ${pair}\n\nSelect a timeframe:`,
-    { reply_markup: getReplyKeyboard(timeframes, 2, ["🔙 Back"]) }
+    { reply_markup: getReplyKeyboard(timeframes", 2, ["🔙 Back"]) }
   );
 });
 
 async function generatePrediction(pair, time) {
   try {
     const encodedPair = encodeURIComponent(pair);
-    const url = `https://fcsapi.com/api-v3/forex/latest?symbol=${encodedPair}&access_key=${apiKey}`;
+    const url = `https://fcsapi.com/api-v3/forex/latest?symbol=${encodedPair}&access_key=${encodeURIComponent(apiKey)}`;
 
     const { data } = await axios.get(url);
     const res = data?.response?.[0];
@@ -81,7 +80,7 @@ async function generatePrediction(pair, time) {
     const formattedText = `
 
 ${emoji.repeat(5)}
-𝗣𝗥𝗘𝗗𝗜𝗖𝗧𝗜𝗢�_N: ${trend} ${trendIcon}
+𝗣𝗥𝗘𝗗𝗜𝗖𝗧𝗜𝗢𝗡: ${trend} ${trendIcon}
 𝗣𝗔𝗜𝗥: ${pair}
 𝗧𝗜𝗠𝗘𝗙𝗥𝗔𝗠𝗘: ${time}`.trim();
 
@@ -141,7 +140,7 @@ bot.hears("🔙 Back", async (ctx) => {
   } else {
     return ctx.reply(
       "👋 Welcome to the Binary Signal AI Bot!\n\nPlease select a currency pair:",
-      { reply_markup: getReplyKeyboard(currencyPairs, Telegraf 2, ["🔙 Back"]) }
+      { reply_markup: getReplyKeyboard(currencyPairs, 2, ["🔙 Back"]) }
     );
   }
 });
