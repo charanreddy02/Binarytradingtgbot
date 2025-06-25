@@ -56,4 +56,3 @@ return `${reasoning}\n\n${prediction}`;
 async function mockFetchHistoricalData(pair, timeframe) { // Replace this with real price data logic/API later const randomPrices = []; let price = 1 + Math.random(); for (let i = 0; i < 10; i++) { const change = (Math.random() - 0.5) * 0.01; price += change; randomPrices.push(Number(price.toFixed(5))); } return randomPrices; }
 
 module.exports = bot;
-
