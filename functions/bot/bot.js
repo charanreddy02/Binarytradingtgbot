@@ -1,107 +1,65 @@
-const { Telegraf, Markup } = require("telegraf");
+const { Telegraf } = require("telegraf"); const axios = require("axios");
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-const currencyPairs = [
-  "AUD/NZD", "EUR/SGD", "GBP/NZD", "NZD/CAD", "NZD/CHF", "NZD/USD",
-  "USD/BDT", "USD/BRL", "USD/COP", "USD/DZD", "USD/EGP", "USD/INR",
-  "USD/NGN", "USD/PKR", "USD/PHP", "USD/TRY", "UKBrent", "USCrude"
-];
+const currencyPairs = [ "AUD/NZD", "EUR/SGD", "GBP/NZD", "NZD/CAD", "NZD/CHF", "NZD/USD", "USD/BDT", "USD/BRL", "USD/COP", "USD/DZD", "USD/EGP", "USD/INR", "USD/NGN", "USD/PKR", "USD/PHP", "USD/TRY", "UKBrent", "USCrude" ];
 
 const timeframes = ["10S", "30S", "1min", "3min", "5min"];
 
-const userState = {};
+const userSession = {};
 
-// Helper to group buttons side-by-side
-const chunk = (arr, size) => {
-  const chunks = [];
-  for (let i = 0; i < arr.length; i += size) {
-    chunks.push(arr.slice(i, i + size));
-  }
-  return chunks;
+const getReplyKeyboard = (items, rowSize = 2, extraButtons = []) => { const keyboard = []; for (let i = 0; i < items.length; i += rowSize) { keyboard.push(items.slice(i, i + rowSize)); } if (extraButtons.length) keyboard.push(extraButtons); return { keyboard, resize_keyboard: true }; };
+
+bot.start((ctx) => { userSession[ctx.chat.id] = {}; return ctx.reply( "👋 Welcome to the Binary Signal AI Bot!\n\nPlease select a currency pair:", { reply_markup: getReplyKeyboard(currencyPairs, 2, ["🔙 Back"]) } ); });
+
+bot.hears(currencyPairs, async (ctx) => { const pair = ctx.message.text; userSession[ctx.chat.id].pair = pair; return ctx.reply( 📊 Selected Pair: ${pair}\n\nSelect a timeframe:, { reply_markup: getReplyKeyboard(timeframes, 2, ["🔙 Back"]) } ); });
+
+async function generatePrediction(pair, time) { try { const [base, quote] = pair.split("/"); const intervalMap = { "10S": "1m", "30S": "1m", "1min": "1m", "3min": "3m", "5min": "5m" }; const interval = intervalMap[time] || "1m"; const symbol = (base + quote).replace(/[^A-Za-z]/g, "").toUpperCase(); const url = https://api.binance.com/api/v3/klines?symbol=${symbol}USDT&interval=${interval}&limit=10;
+
+const { data } = await axios.get(url);
+if (!data || data.length < 3) {
+  return {
+    text: `⚠️ Insufficient data for ${pair} at ${time} timeframe. Unable to make accurate prediction.`
+  };
+}
+
+const closes = data.map((k) => parseFloat(k[4]));
+const last = closes[closes.length - 1];
+const prev = closes[closes.length - 2];
+
+let trend = last > prev ? "up" : "down";
+let emoji = trend === "up" ? "⬆️" : "⬇️";
+let directionText = trend === "up" ? "UP 📈" : "DOWN 📉";
+
+return {
+  text: `${emoji.repeat(5)}\n\n𝗣𝗥𝗘𝗗𝗜𝗖𝗧𝗜𝗢𝗡: ${directionText}\n𝗣𝗔𝗜𝗥: ${pair}\n𝗧𝗜𝗠𝗘𝗙𝗥𝗔𝗠𝗘: ${time}`
 };
 
-// Start command - show pair selection
-bot.start((ctx) => {
-  userState[ctx.chat.id] = {};
-  ctx.reply("👋 Welcome! Please select a currency pair:", Markup.keyboard(
-    [...chunk(currencyPairs, 2), ["🔙 Back"]]
-  ).resize());
-});
+} catch (err) { return { text: "⚠️ Error fetching market data. Prediction unavailable." }; } }
 
-// Handle currency pair selection
-bot.hears(currencyPairs, (ctx) => {
-  const pair = ctx.message.text;
-  userState[ctx.chat.id].pair = pair;
+bot.hears(timeframes, async (ctx) => { const chatId = ctx.chat.id; const session = userSession[chatId];
 
-  ctx.reply(`📊 Selected Pair: ${pair}\n\nNow select a timeframe:`, Markup.keyboard(
-    [...chunk(timeframes, 2), ["🔙 Back"]]
-  ).resize());
-});
+if (!session?.pair) { return ctx.reply("Please select a currency pair first."); }
 
-// Handle timeframe selection
-bot.hears(timeframes, (ctx) => {
-  const time = ctx.message.text;
-  userState[ctx.chat.id].time = time;
+session.time = ctx.message.text; const { text } = await generatePrediction(session.pair, session.time);
 
-  const prediction = Math.random() > 0.5 ? '⬆️' : '⬇️';
-  ctx.reply(`📈 Signal for ${userState[ctx.chat.id].pair} @ ${time}:`);
-  ctx.reply(prediction, Markup.keyboard([
-    ["📈 Next Signal", "🔙 Back"]
-  ]).resize());
-});
+await ctx.reply(text); return ctx.reply("Get the next signal or go back:", { reply_markup: getReplyKeyboard(["📈 Next Signal", "🔙 Back"], 2) }); });
 
-// Handle next signal request
-bot.hears("📈 Next Signal", (ctx) => {
-  const prediction = Math.random() > 0.5 ? '⬆️' : '⬇️';
-  ctx.reply(prediction, Markup.keyboard([
-    ["📈 Next Signal", "🔙 Back"]
-  ]).resize());
-});
+bot.hears("📈 Next Signal", async (ctx) => { const session = userSession[ctx.chat.id]; if (!session?.pair || !session?.time) { return ctx.reply("Please select pair and time first."); }
 
-// Handle back navigation
-bot.hears("🔙 Back", (ctx) => {
-  const state = userState[ctx.chat.id];
+const { text } = await generatePrediction(session.pair, session.time); return ctx.reply(text); });
 
-  if (!state.pair) {
-    // Already at main
-    ctx.reply("👋 Welcome! Please select a currency pair:", Markup.keyboard(
-      [...chunk(currencyPairs, 2), ["🔙 Back"]]
-    ).resize());
-  } else if (state.pair && !state.time) {
-    // Go back to pair selection
-    state.pair = null;
-    ctx.reply("👋 Welcome! Please select a currency pair:", Markup.keyboard(
-      [...chunk(currencyPairs, 2), ["🔙 Back"]]
-    ).resize());
-  } else if (state.pair && state.time) {
-    // Go back to timeframe selection
-    state.time = null;
-    ctx.reply(`📊 Selected Pair: ${state.pair}\n\nNow select a timeframe:`, Markup.keyboard(
-      [...chunk(timeframes, 2), ["🔙 Back"]]
-    ).resize());
-  }
-});
+bot.hears("🔙 Back", async (ctx) => { const session = userSession[ctx.chat.id]; if (session?.time) { delete session.time; return ctx.reply( 📊 Selected Pair: ${session.pair}\n\nSelect a timeframe:, { reply_markup: getReplyKeyboard(timeframes, 2, ["🔙 Back"]) } ); } else if (session?.pair) { delete session.pair; return ctx.reply("👋 Please select a currency pair again:", { reply_markup: getReplyKeyboard(currencyPairs, 2, ["🔙 Back"]) }); } else { return ctx.reply("👋 Welcome to the Binary Signal AI Bot!\n\nPlease select a currency pair:", { reply_markup: getReplyKeyboard(currencyPairs, 2, ["🔙 Back"]) }); } });
 
-// Webhook handler for Netlify
-exports.handler = async (event) => {
-  try {
-    if (event.httpMethod !== "POST") {
-      return { statusCode: 405, body: "Method Not Allowed" };
-    }
+exports.handler = async (event) => { try { if (event.httpMethod !== "POST") { return { statusCode: 405, body: "Method Not Allowed" }; }
 
-    const update = JSON.parse(event.body);
-    await bot.handleUpdate(update);
+const update = JSON.parse(event.body);
+await bot.handleUpdate(update);
 
-    return {
-      statusCode: 200,
-      body: "Success",
-    };
-  } catch (err) {
-    console.error("Error in Telegram handler:", err);
-    return {
-      statusCode: 500,
-      body: "Internal Server Error",
-    };
-  }
+return {
+  statusCode: 200,
+  body: JSON.stringify({ message: "Success" })
 };
+
+} catch (error) { console.error("Telegram Bot Error:", error); return { statusCode: 500, body: JSON.stringify({ error: "Internal Server Error" }) }; } };
+
