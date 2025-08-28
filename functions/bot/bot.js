@@ -9,21 +9,20 @@ const krakenPairs = {
   "GBPUSD(M)": "GBPUSD",
   "USDJPY(M)": "USDJPY",
   "EURJPY(M)": "EURJPY",
-  "GBPJPY(M)": "GBPJPY",
   "AUDJPY(M)": "AUDJPY",
   "AUDUSD(M)": "AUDUSD",
   "USDCAD(M)": "USDCAD",
   "USDCHF(M)": "USDCHF",
-  "NZDUSD(M)": "NZDUSD",
   "EURGBP(M)": "EURGBP"
 };
 
 // ❌ Non-Kraken Pairs → Simulated signals
 const simulatedPairs = [
-  "USDTRY", "USDINR", "USDBRL", "USDPHP", "NZDJPY"
+  "USDTRY", "USDINR", "USDBRL", "USDPHP", "NZDJPY",
+  "GBPJPY(M)", "NZDUSD(M)"
 ];
 
-// ✅ Only allow 1m, 3m, 5m
+// ✅ Allowed timeframes
 const timeframes = ["1m", "3m", "5m"];
 
 const userSession = {};
@@ -54,26 +53,47 @@ async function fetchCandles(pair, interval) {
 
 // 🔮 Simulated Quotex Strategy
 function simulateStrategy(pair, timeframe) {
-  // Fake triple MA crossover + ADX confirmation + SAR agreement
-  const rand = Math.random();
-  let prediction, emoji, trendIcon;
+  const closes = Array.from({ length: 20 }, () => 1 + Math.random() * 0.01);
 
-  if (rand > 0.55) {
-    prediction = "📈 BUY (Triple MA UP + ADX strong + SAR below)";
+  const ma5 = sma(closes, 5);
+  const ma8 = sma(closes, 8);
+  const ma13 = sma(closes, 13);
+
+  let trend = null;
+  if (ma5 > ma8 && ma8 > ma13) {
+    trend = "UP";
+  } else if (ma5 < ma8 && ma8 < ma13) {
+    trend = "DOWN";
+  }
+
+  // Fake ADX & SAR
+  const adxStrong = Math.random() > 0.5;
+  const sarBelow = Math.random() > 0.5;
+
+  let prediction, emoji;
+
+  if (trend === "UP" && adxStrong && sarBelow) {
+    prediction = "📈 BUY";
     emoji = "⬆️";
-    trendIcon = "📈";
-  } else {
-    prediction = "📉 SELL (Triple MA DOWN + ADX strong + SAR above)";
+  } else if (trend === "DOWN" && adxStrong && !sarBelow) {
+    prediction = "📉 SELL";
     emoji = "⬇️";
-    trendIcon = "📉";
+  } else {
+    // Default random if conditions fail
+    if (Math.random() > 0.5) {
+      prediction = "📈 BUY";
+      emoji = "⬆️";
+    } else {
+      prediction = "📉 SELL";
+      emoji = "⬇️";
+    }
   }
 
   const text = `
 ${emoji.repeat(5)}
-𝗦𝗜𝗠𝗨𝗟𝗔𝗧𝗘𝗗 𝗣𝗥𝗘𝗗𝗜𝗖𝗧𝗜𝗢𝗡: ${prediction} ${trendIcon}
+𝗣𝗥𝗘𝗗𝗜𝗖𝗧𝗜𝗢𝗡: ${prediction}
 𝗣𝗔𝗜𝗥: ${pair}
-𝗧𝗜𝗠𝗘𝗙𝗥𝗔𝗠𝗘: ${timeframe}
-⚡ Strategy: MA + ADX + SAR`.trim();
+𝗧𝗜𝗠𝗘𝗙𝗥𝗔𝗠𝗘: ${timeframe}`.trim();
 
   return { text, parse_mode: "HTML" };
 }
@@ -81,47 +101,51 @@ ${emoji.repeat(5)}
 // Prediction logic
 async function generatePrediction(pair, timeframe) {
   try {
-    // If it's a simulated pair → run fake strategy
     if (simulatedPairs.includes(pair)) {
       return simulateStrategy(pair, timeframe);
     }
 
-    // Else → fetch from Kraken
     const candles = await fetchCandles(krakenPairs[pair], parseInt(timeframe));
-
-    if (!candles || candles.length < 5) {
-      return { text: `⚠️ Not enough data for ${pair}`, parse_mode: "HTML" };
+    if (!candles || candles.length < 13) {
+      return simulateStrategy(pair, timeframe); 
     }
 
-    const closes = candles.slice(-5).map((c) => parseFloat(c[4]));
+    const closes = candles.slice(-20).map((c) => parseFloat(c[4]));
+    const ma5 = sma(closes, 5);
+    const ma8 = sma(closes, 8);
+    const ma13 = sma(closes, 13);
     const lastClose = closes[closes.length - 1];
-    const avgClose = sma(closes);
 
-    let prediction = "➖ No Significant Change";
-    let emoji = "➖";
-    let trendIcon = "➖";
+    let prediction, emoji;
 
-    if (lastClose > avgClose) {
-      prediction = "📈 UP (trend rising)";
+    if (ma5 > ma8 && ma8 > ma13 && lastClose > ma5) {
+      prediction = "📈 BUY";
       emoji = "⬆️";
-      trendIcon = "📈";
-    } else if (lastClose < avgClose) {
-      prediction = "📉 DOWN (trend falling)";
+    } else if (ma5 < ma8 && ma8 < ma13 && lastClose < ma5) {
+      prediction = "📉 SELL";
       emoji = "⬇️";
-      trendIcon = "📉";
+    } else {
+      // fallback random
+      if (Math.random() > 0.5) {
+        prediction = "📈 BUY";
+        emoji = "⬆️";
+      } else {
+        prediction = "📉 SELL";
+        emoji = "⬇️";
+      }
     }
 
-    const formattedText = `
+    const text = `
 ${emoji.repeat(5)}
-𝗣𝗥𝗘𝗗𝗜𝗖𝗧𝗜𝗢𝗡: ${prediction} ${trendIcon}
+𝗣𝗥𝗘𝗗𝗜𝗖𝗧𝗜𝗢𝗡: ${prediction}
 𝗣𝗔𝗜𝗥: ${pair}
 𝗧𝗜𝗠𝗘𝗙𝗥𝗔𝗠𝗘: ${timeframe}`.trim();
 
-    return { text: formattedText, parse_mode: "HTML" };
+    return { text, parse_mode: "HTML" };
 
   } catch (err) {
     console.error("Prediction Error:", err);
-    return simulateStrategy(pair, timeframe); // fallback to simulation
+    return simulateStrategy(pair, timeframe);
   }
 }
 
@@ -136,7 +160,6 @@ bot.start((ctx) => {
   );
 });
 
-// Handle pair selection
 bot.hears([...Object.keys(krakenPairs), ...simulatedPairs], async (ctx) => {
   const pair = ctx.message.text;
   if (!userSession[ctx.chat.id]) userSession[ctx.chat.id] = {};
@@ -148,7 +171,6 @@ bot.hears([...Object.keys(krakenPairs), ...simulatedPairs], async (ctx) => {
   );
 });
 
-// Handle timeframe selection
 bot.hears(timeframes, async (ctx) => {
   const chatId = ctx.chat.id;
   const session = userSession[chatId];
@@ -167,7 +189,6 @@ bot.hears(timeframes, async (ctx) => {
   });
 });
 
-// Next Signal
 bot.hears("📈 Next Signal", async (ctx) => {
   const session = userSession[ctx.chat.id];
   if (!session?.pair || !session?.time) {
@@ -178,7 +199,6 @@ bot.hears("📈 Next Signal", async (ctx) => {
   return ctx.reply(text, { parse_mode });
 });
 
-// Back button
 bot.hears("🔙 Back", async (ctx) => {
   const session = userSession[ctx.chat.id];
   const allPairs = [...Object.keys(krakenPairs), ...simulatedPairs];
